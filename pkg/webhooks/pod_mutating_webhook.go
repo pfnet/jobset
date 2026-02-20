@@ -20,11 +20,9 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	jobset "sigs.k8s.io/jobset/api/jobset/v1alpha2"
 	"sigs.k8s.io/jobset/pkg/constants"
@@ -34,8 +32,7 @@ import (
 
 // podWebhook for mutating webhook.
 type podWebhook struct {
-	client  client.Client
-	decoder *admission.Decoder
+	client client.Client
 }
 
 func NewPodWebhook(client client.Client) *podWebhook {
@@ -44,17 +41,10 @@ func NewPodWebhook(client client.Client) *podWebhook {
 
 // SetupWebhookWithManager configures the mutating webhook for pods.
 func (p *podWebhook) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(&corev1.Pod{}).
+	return ctrl.NewWebhookManagedBy(mgr, &corev1.Pod{}).
 		WithDefaulter(p).
 		WithValidator(p).
 		Complete()
-}
-
-// InjectDecoder injects the decoder into the podWebhook.
-func (p *podWebhook) InjectDecoder(d *admission.Decoder) error {
-	p.decoder = d
-	return nil
 }
 
 // Default will mutate pods being created in the following ways:
@@ -62,11 +52,7 @@ func (p *podWebhook) InjectDecoder(d *admission.Decoder) error {
 //     exclusive placement per topology are injected.
 //  2. For follower pods (job completion index != 0), nodeSelectors for the same topology
 //     as their leader pod are injected.
-func (p *podWebhook) Default(ctx context.Context, obj runtime.Object) error {
-	pod, ok := obj.(*corev1.Pod)
-	if !ok {
-		return nil
-	}
+func (p *podWebhook) Default(ctx context.Context, pod *corev1.Pod) error {
 	// If this pod is part of a JobSet that is NOT using the exclusive placement feature,
 	// or if this jobset is using the node selector exclusive placement strategy (running
 	// the hack/label_nodes.py script beforehand), we don't need to mutate the pod here.
