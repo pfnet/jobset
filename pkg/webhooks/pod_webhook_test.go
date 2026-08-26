@@ -116,9 +116,6 @@ func TestDefault(t *testing.T) {
 					Annotations: map[string]string{
 						"jobset.sigs.k8s.io/jobset-name": "js",
 					},
-					Labels: map[string]string{
-						"jobset.sigs.k8s.io/priority": "100",
-					},
 				},
 				Spec: corev1.PodSpec{
 					Priority: ptr.To(int32(100)),
